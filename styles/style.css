@@ -10,30 +10,34 @@ h1 {
 }
 
 
-html {
-	background-image: url(v2-3930ce6b1c16924bb3c6e53340232035_r.jpg); 
-	/* 背景范围 */
-	background-clip: content-box;
-	/* 背景图片大小 */
-	background-size: contain;
-}
-
 body {
+
 	width: 600px;
 	margin: 0 auto;
-	
+	background-image: linear-gradient(to top, #fad0c4 0%, #ffd1ff 100%);
 	padding: 0 20px 20px 20px;
 	
+}
+
+
+html {
+	background: radial-gradient( circle at bottom left, transparent 0, transparent 2em, beige 2em, beige 4em, transparent 4em, transparent 6em, khaki 6em, khaki 8em, transparent 8em, transparent 10em ), radial-gradient( circle at top right, transparent 0, transparent 2em, beige 2em, beige 4em, transparent 4em, transparent 6em, khaki 6em, khaki 8em, transparent 8em, transparent 10em ), radial-gradient( circle at top left, transparent 0, transparent 2em, navajowhite 2em, navajowhite 4em, transparent 4em, transparent 6em, peachpuff 6em, peachpuff 8em, transparent 8em, transparent 10em ), radial-gradient( circle at bottom right, transparent 0, transparent 2em, palegoldenrod 2em, palegoldenrod 4em, transparent 4em, transparent 6em, peachpuff 6em, peachpuff 8em, transparent 8em, transparent 10em ), blanchedalmond;
+	background-blend-mode: multiply;
+	background-size: 10em 10em;
+	background-position: 0 0, 0 0, 5em 5em, 5em 5em;
 }
 
 h1 {
 	margin: 0;
 	padding: 20px 0;
-	color: #00539F;
-	text-shadow: 3px 3px 1px black;
+	color: cornflowerblue;
+	front-family:  微软雅黑;
+}
+h3 {
+	width: 300px;
+	height: 200px;
+	white-space: nowrap;
+	overflow: hidden;
 }
 
-img {
-	display: block;
-	margin: 0 auto;
-}
+
