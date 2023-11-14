@@ -1,0 +1,38 @@
+html {
+    font-size: 10px;
+    font-family: 'Open Sans', sans-serif;
+}
+
+
+h1 {
+	font-size: 60px;
+	text-align: center;
+}
+
+
+body {
+	background-image: url('../2.jpg');
+	background-size: cover;
+	background-repeat: no-repeat;
+}
+
+h1 {
+	margin: 0;
+	padding: 20px 0;
+	color: papayawhip;
+	front-family: 微软雅黑;
+}
+
+h3 {
+	width: 300px;
+	height: 200px;
+	white-space: nowrap;
+	overflow: hidden;
+	color: papayawhip;
+}
+h5 {
+	width: 300px;
+	white-space: nowrap;
+	overflow: hidden;
+	color: papayawhip;
+}
