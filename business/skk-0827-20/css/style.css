@@ -625,7 +625,7 @@ footer{ width:100%; margin:0 auto; background:#f1f5f9; height:260px; overflow:hi
 	-moz-transition: all .3s;
 	-ms-transition: all .3s;
 	-o-transition: all .3s;}
-.footer .footer_left ul .qq:hover .qq_erweima{ position:absolute; width:129px; height:129px;left:0px; top:50px; background:url(../img/qrcode_for_tuodongruanjian.png) no-repeat;-webkit-transform: rotate(-360deg);
+.footer .footer_left ul .qq:hover .qq_erweima{ position:absolute; width:129px; height:129px;left:0px; top:50px; background:url(../img/qqcod.png) no-repeat;-webkit-transform: rotate(-360deg);
 	-moz-transform: rotate(-360deg);
 	-ms-transform: rotate(-360deg);
 	-o-transform: rotate(-360deg);}
@@ -698,35 +698,5 @@ footer .copyright p{ color:#000000; font-size:14px; }
 /*--------------------------------------------------*/
 .zcap_topimg{margin:0 auto; width:870px; margin-top:100px;}
 .xcap_p{ font-size:24px; color:#000000; margin-top:40px;}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
  
