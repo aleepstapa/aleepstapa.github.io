@@ -154,6 +154,29 @@
       color: rgba(255, 255, 255, .22);
       z-index: 2;
     }
+
+    /* 音乐开关 */
+    #bgm {
+      position: fixed;
+      top: 22px; right: 22px;
+      z-index: 5;
+      font-size: 13px;
+      letter-spacing: .12em;
+      color: rgba(255, 255, 255, .7);
+      border: 1px solid rgba(255, 255, 255, .18);
+      border-radius: 999px;
+      padding: 8px 16px;
+      cursor: pointer;
+      user-select: none;
+      background: rgba(255, 255, 255, .04);
+      backdrop-filter: blur(4px);
+      transition: all .3s ease;
+    }
+    #bgm:hover {
+      color: #fff;
+      border-color: var(--c);
+      box-shadow: 0 0 18px color-mix(in srgb, var(--c) 50%, transparent);
+    }
   </style>
 </head>
 
@@ -176,6 +199,7 @@
   </div>
 
   <p id="hint">TAP ANYWHERE</p>
+  <div id="bgm">🔊 音乐</div>
 
   <script>
     var phrases = [
@@ -286,6 +310,246 @@
       span.style.animation = "";
     }
 
+    /* ===== BGM：仿 Cornfield Chase（Web Audio 实时合成，无外部音频）===== */
+    var actx = null, master = null, swell = null, bgmNoise = null, bgmOn = true, bgmReady = false, bgmTimer = null;
+    var bgmDroneGain = null; /* 持续低音 pedal 的音量总线，供第三段末尾减少 1 秒调度 */
+    var melodyBus = null;   /* 滚动旋律专用总线：最后 10s 随铺底加厚同步增强（同涨），避免被盖过 */
+    var bgmNext = 0, bgmBar = 0, arpNext = 0, arpStep = 0;
+    var bassNext = 0, bassStepIdx = 0; /* 阶梯式低音(听觉错觉)调度 */
+    var arpDur = (60 / 84) / 3;          /* 八分音符三连音 ≈ 0.238s（12/8 滚动管风琴感） */
+    var padDur = 10.0;                   /* 每段 10 秒，整曲 30 秒一循环（3 段） */
+    var bassDur = 2.5;                   /* 阶梯低音每 2.5 秒迈一步 → 30 秒正好 12 半音=一个八度，无缝循环 */
+    /* 三段铺底和弦循环：D - G - A（原曲 D 中心调性，逐段更亮） */
+    var bgmPads = [
+      [146.83, 185.00, 220.00, 293.66],  /* D : D F# A D */
+      [196.00, 246.94, 293.66, 392.00],  /* G : G B D G */
+      [220.00, 277.18, 329.63, 440.00]   /* A : A C# E A */
+    ];
+    /* 管风琴固定音型（D 中心，上行下行往复，仿 Cornfield Chase 滚动轮廓） */
+    var bgmArpPat = [146.83, 146.83, 220.00, 293.66, 185.00, 220.00, 293.66, 246.94];
+    /* 阶梯式低音(听觉错觉)：D1 起每半音上升，沿一个八度循环 → 似无限升高却无缝循环 */
+    var bgmBassLadder = [];
+    for (var bi = 0; bi < 12; bi++) bgmBassLadder.push(36.71 * Math.pow(2, bi / 11)); /* D1..D2 共 12 音 */
+
+    function bgmStart() {
+      if (bgmReady) return;
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      try { actx = new AC(); } catch (e) { return; }
+      if (actx.state === "suspended") actx.resume();
+      master = actx.createGain();
+      master.gain.setValueAtTime(0.0001, actx.currentTime);
+      master.gain.exponentialRampToValueAtTime(bgmOn ? 0.18 : 0.0001, actx.currentTime + 4);
+      master.connect(actx.destination);
+      /* 总音量「呼吸」总线：弦乐/管风琴/穿梭都过它，低音 pedal 直连 master 保持稳定 */
+      swell = actx.createGain();
+      swell.gain.value = 0.6;
+      swell.connect(master);
+      /* 滚动旋律总线：默认 1.0，第三段随铺底加厚渐强（见 bgmScheduler），再进 swell 与全曲同呼吸 */
+      melodyBus = actx.createGain();
+      melodyBus.gain.value = 1.0;
+      melodyBus.connect(swell);
+      bgmReady = true;
+      bgmNoise = actx.createBuffer(1, actx.sampleRate * 2, actx.sampleRate);
+      var nd = bgmNoise.getChannelData(0);
+      for (var n = 0; n < nd.length; n++) nd[n] = Math.random() * 2 - 1;
+      /* 持续低音 pedal（D2），贯穿全曲；第三段末尾减少 1 秒由 bgmScheduler 调度 */
+      var drone = actx.createOscillator();
+      drone.type = "sine"; drone.frequency.value = 73.42; /* D2 pedal */
+      bgmDroneGain = actx.createGain(); bgmDroneGain.gain.value = 0.05;
+      drone.connect(bgmDroneGain); bgmDroneGain.connect(master);
+      drone.start(actx.currentTime);
+      bgmNext = actx.currentTime + 0.2;
+      bgmBar = 0;
+      arpNext = actx.currentTime + 0.2;
+      arpStep = 0;
+      bassNext = actx.currentTime + 0.2;
+      bassStepIdx = 0;
+      bgmTimer = setInterval(bgmScheduler, 80);
+    }
+
+    function bgmScheduler() {
+      if (!actx) return;
+      /* 三段铺底：每 10 秒切换 D / G / A；循环起点做 30 秒整体呼吸，并在高潮触发星际穿梭 */
+      while (bgmNext < actx.currentTime + 0.6) {
+        var k = bgmBar;
+        if (k % bgmPads.length === 0) {
+          /* 整曲 30 秒：首尾收束、中点(15s)最饱满的潮起潮落 */
+          swell.gain.cancelScheduledValues(bgmNext);
+          swell.gain.setValueAtTime(0.40, bgmNext);
+          swell.gain.linearRampToValueAtTime(1.1, bgmNext + 15);
+          swell.gain.linearRampToValueAtTime(0.40, bgmNext + 30);
+          bgmWarp(bgmNext + 15); /* 高潮处的星际穿梭 */
+          /* 仅第三段持续低音（drone）末尾减少 1 秒：第三段最后 1 秒淡出，循环回到第一段时恢复；其余部分不变 */
+          if (bgmDroneGain) {
+            var d3 = bgmNext + 2 * padDur; /* 第三段起点 */
+            bgmDroneGain.gain.setValueAtTime(0.05, d3 + padDur - 1.0);
+            bgmDroneGain.gain.linearRampToValueAtTime(0.0001, d3 + padDur - 0.4);
+            bgmDroneGain.gain.linearRampToValueAtTime(0.05, d3 + padDur); /* 回到第一段起点时恢复 */
+          }
+          /* 最后 10s：铺底叠入高八度微光层而加厚，滚动旋律同步渐强（同涨），保证连续跳动不被盖过 */
+          if (melodyBus) {
+            melodyBus.gain.cancelScheduledValues(bgmNext);
+            melodyBus.gain.setValueAtTime(1.0, bgmNext);
+            melodyBus.gain.setValueAtTime(1.0, bgmNext + 2 * padDur);
+            melodyBus.gain.linearRampToValueAtTime(1.7, bgmNext + 3 * padDur - 0.5);
+            melodyBus.gain.linearRampToValueAtTime(1.0, bgmNext + 3 * padDur); /* 接缝 0.5s 回落，与下一轮 1.0 衔接 */
+          }
+        }
+        var segIdx = k % bgmPads.length;
+        if (segIdx === 2) {
+          /* 第三段：前 6 秒 A 铺底 + 后 4 秒 A 整体(低音 body+高八度微光)，二者在 25–27s 做 2 秒交叉淡化，平滑过渡；其余段落不变 */
+          bgmPlayPad(bgmPads[2], bgmNext, 7.0, true, 0.30, 1.5, 1.5, true);                       /* 前层：20–27s，主占 20–26s，尾 1s 交叉淡化（线性，不塌陷） */
+          bgmPlayPad([220.00, 277.18, 329.63, 440.00, 554.37, 659.25, 880.00], bgmNext + 5.0, 5.0, true, 0.22, 1.5, 1.5, true); /* 后层：25–30s，头 1s 与前层交叉淡化（线性，不塌陷） */
+        } else {
+          bgmPlayPad(bgmPads[segIdx], bgmNext, padDur, false);
+        }
+        /* 钢琴点缀：每段稀疏几枚和弦高音，轻盈闪烁，不喧宾夺主 */
+        var ch = bgmPads[segIdx];
+        pianoEmbellish(ch[2] * 2, bgmNext + 1.2, 0.05);
+        pianoEmbellish(ch[3] * 2, bgmNext + 4.0, 0.045);
+        pianoEmbellish(ch[1] * 2, bgmNext + 7.2, 0.04);
+        bgmNext += padDur;
+        bgmBar++;
+      }
+      /* 管风琴旋律（主驱动）；三段力度递增，层次逐步推高 */
+      var secVel = [0.07, 0.11, 0.15];
+      while (arpNext < actx.currentTime + 0.6) {
+        var af = bgmArpPat[arpStep % bgmArpPat.length];
+        var vel = secVel[bgmBar % bgmPads.length] || 0.10;
+        organNote(af, arpNext, arpDur, vel);
+        organNote(af * 2, arpNext, arpDur * 0.6, vel * 0.5); /* 高八度泛音，加厚管风琴 */
+        arpNext += arpDur;
+        arpStep++;
+      }
+      /* 阶梯式低音：每 2.5 秒迈一步，沿一个八度无缝循环，制造无限升高错觉 */
+      while (bassNext < actx.currentTime + 0.6) {
+        stepBass(bassNext);
+        bassNext += bassDur;
+        bassStepIdx++;
+      }
+    }
+
+    /* 缓缓涨落的弦乐铺底（柔光 pad）；move=true 时加缓慢滤波扫频；lvl 控制音量；atk/rel 可覆盖淡入淡出时长；lin=true 时用线性淡变（交叉淡化不塌陷），否则指数 swell */
+    function bgmPlayPad(freqs, t, dur, move, lvl, atk, rel, lin) {
+      var filt = actx.createBiquadFilter();
+      filt.type = "lowpass"; filt.frequency.value = 900; filt.Q.value = 0.4;
+      if (move) {
+        filt.frequency.setValueAtTime(650, t);
+        filt.frequency.linearRampToValueAtTime(1700, t + dur * 0.5);
+        filt.frequency.linearRampToValueAtTime(650, t + dur);
+      }
+      var a = (atk || Math.min(2.5, dur * 0.4));   /* 淡入时长 */
+      var r = (rel || Math.min(2.5, dur * 0.4));   /* 淡出时长 */
+      if (a + r > dur) { a = r = dur / 2; }         /* 防止包络反向 */
+      var ramp = (lin ? "linearRampToValueAtTime" : "exponentialRampToValueAtTime");
+      var g = actx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain[ramp](0.5, t + a);
+      g.gain.setValueAtTime(0.5, t + dur - r);
+      g.gain[ramp](0.0001, t + dur);
+      g.connect(filt); filt.connect(swell);
+      var v = (lvl || 0.30);
+      freqs.forEach(function (f) {
+        var o = actx.createOscillator();
+        o.type = "sine"; o.frequency.value = f;
+        var og = actx.createGain(); og.gain.value = v;
+        o.connect(og); og.connect(g);
+        o.start(t); o.stop(t + dur + 0.1);
+      });
+    }
+
+    /* 星际穿梭：白噪声带通扫频（循环中点触发一次） */
+    function bgmWarp(t) {
+      if (!actx || !bgmNoise) return;
+      var src = actx.createBufferSource();
+      src.buffer = bgmNoise; src.loop = true;
+      var bp = actx.createBiquadFilter();
+      bp.type = "bandpass"; bp.Q.value = 1.1;
+      bp.frequency.setValueAtTime(350, t);
+      bp.frequency.exponentialRampToValueAtTime(3200, t + 1.5);
+      bp.frequency.exponentialRampToValueAtTime(350, t + 3.0);
+      var g = actx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.05, t + 1.2);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 3.0);
+      src.connect(bp); bp.connect(g); g.connect(swell);
+      src.start(t); src.stop(t + 3.1);
+    }
+
+    /* 管风琴音色：基频 + 八度 + 十二度泛音；vel 控制力度 */
+    function organNote(f, t, dur, vel) {
+      vel = vel || 0.10;
+      var g = actx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vel, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur * 0.95);
+      [1, 2, 3].forEach(function (h, i) {
+        var o = actx.createOscillator();
+        o.type = "sine";
+        o.frequency.value = f * (i + 1);
+        var og = actx.createGain();
+        og.gain.value = [1, 0.5, 0.28][i];
+        o.connect(og); og.connect(g); o.start(t); o.stop(t + dur);
+      });
+      g.connect(melodyBus);
+    }
+
+    /* 钢琴点缀：三角波基频 + 少量高次谐波，快起音指数衰减，轻盈闪烁 */
+    function pianoEmbellish(freq, t, vel) {
+      vel = vel || 0.05;
+      var dur = 1.5;
+      var env = actx.createGain();
+      env.gain.setValueAtTime(0.0001, t);
+      env.gain.exponentialRampToValueAtTime(vel, t + 0.006);
+      env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      var filt = actx.createBiquadFilter();
+      filt.type = "lowpass"; filt.frequency.value = 2800; filt.Q.value = 0.2;
+      env.connect(filt); filt.connect(swell);
+      [["triangle", 1.0], ["sine", 0.34], ["sine", 0.16], ["sine", 0.07]].forEach(function (p, i) {
+        var o = actx.createOscillator();
+        o.type = p[0]; o.frequency.value = freq * (i + 1);
+        var og = actx.createGain(); og.gain.value = p[1];
+        o.connect(og); og.connect(env);
+        o.start(t); o.stop(t + dur + 0.05);
+      });
+    }
+
+    /* 阶梯式低音（谢泼德错觉）：每半音上升一步，12 步=一个八度，循环回到起点八度等价→似无限升高却无缝；三声部八度叠音 + 周期钟形权重 */
+    function stepBass(t) {
+      if (!actx) return;
+      var step = bassStepIdx % 12;
+      var f = bgmBassLadder[step];
+      var phase = step / 12;
+      var wSub  = 0.5 - 0.5 * Math.cos(2 * Math.PI * phase);
+      var wBase = 0.5 + 0.5 * Math.cos(2 * Math.PI * phase);
+      var wHigh = 0.5 + 0.5 * Math.sin(2 * Math.PI * phase);
+      var dur = bassDur + 0.1; /* 轻微重叠，衔接更顺 */
+      var bus = actx.createGain(); bus.gain.value = 1.0;
+      var filt = actx.createBiquadFilter();
+      filt.type = "lowpass"; filt.frequency.value = 650; filt.Q.value = 0.3;
+      bus.connect(filt); filt.connect(swell);
+      [[f / 2, wSub], [f, wBase], [f * 2, wHigh]].forEach(function (v) {
+        if (v[1] < 0.03) return;
+        var o = actx.createOscillator();
+        o.type = "sine"; o.frequency.value = v[0];
+        var og = actx.createGain();
+        og.gain.setValueAtTime(0.0001, t);
+        og.gain.exponentialRampToValueAtTime(v[1] * 0.16, t + 0.18);
+        og.gain.setValueAtTime(v[1] * 0.16, t + dur - 0.4);
+        og.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(og); og.connect(bus);
+        o.start(t); o.stop(t + dur + 0.05);
+      });
+    }
+
+    function bgmToggle() {
+      bgmOn = !bgmOn;
+      var btn = document.getElementById("bgm");
+      btn.textContent = bgmOn ? "🔊 音乐" : "🔇 静音";
+      if (actx) master.gain.exponentialRampToValueAtTime(bgmOn ? 0.18 : 0.0001, actx.currentTime + 0.4);
+    }
+
     /* 星尘 */
     (function () {
       for (var i = 0; i < 26; i++) {
@@ -304,13 +568,25 @@
 
     document.addEventListener("click", function (e) {
       if (e.target.closest("a")) return;
+      bgmStart();
       show();
     });
     document.addEventListener("touchend", function (e) {
       if (e.target.closest("a")) return;
       e.preventDefault();
+      bgmStart();
       show();
     }, { passive: false });
+    document.getElementById("bgm").addEventListener("click", function (e) {
+      e.stopPropagation();
+      bgmStart();
+      bgmToggle();
+    });
+    /* 进入页面即尝试自动播放；浏览器自动播放策略可能拦截，此时首次交互会立即启动 */
+    window.addEventListener("load", bgmStart);
+    document.addEventListener("pointerdown", bgmStart, { once: true });
+    document.addEventListener("keydown", bgmStart, { once: true });
+    bgmStart();
     show();
   </script>
 </body>
