@@ -9,108 +9,175 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     html, body { height: 100%; overflow: hidden; }
-    
+
     body {
-      background: #000;
-      font-family: Quicksand, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: #0b0b10;
+      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
       color: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
       -webkit-tap-highlight-color: transparent;
+      cursor: pointer;
     }
-    
-    /* 柔和流动的背景光 */
-    #glow {
+
+    /* ===== 背景：多层柔光 ===== */
+    .glow {
       position: fixed;
-      width: 120vmax; height: 120vmax;
-      left: -60vmax; top: -60vmax;
-      background: radial-gradient(circle, var(--c) 0%, transparent 55%);
-      opacity: .22;
-      animation: drift 14s ease-in-out infinite alternate;
+      border-radius: 50%;
+      filter: blur(90px);
+      pointer-events: none;
+      transition: background 1.4s ease;
+    }
+    #glow1 { width: 55vmax; height: 55vmax; left: -18vmax; top: -20vmax; background: var(--c1); opacity: .5; animation: float1 16s ease-in-out infinite alternate; }
+    #glow2 { width: 45vmax; height: 45vmax; right: -15vmax; bottom: -18vmax; background: var(--c2); opacity: .5; animation: float2 20s ease-in-out infinite alternate; }
+    #glow3 { width: 30vmax; height: 30vmax; left: 32vw; bottom: -12vmax; background: var(--c1); opacity: .3; animation: float1 24s ease-in-out infinite alternate-reverse; }
+
+    @keyframes float1 { from { transform: translate(0, 0) scale(1); } to { transform: translate(6vw, 8vh) scale(1.15); } }
+    @keyframes float2 { from { transform: translate(0, 0) scale(1.1); } to { transform: translate(-7vw, -6vh) scale(.95); } }
+
+    /* 星尘 */
+    .star {
+      position: fixed;
+      width: 3px; height: 3px;
+      border-radius: 50%;
+      background: #fff;
+      opacity: 0;
+      animation: twinkle 4s ease-in-out infinite;
       pointer-events: none;
     }
-    @keyframes drift {
-      from { transform: translate(-8%, -8%) scale(1); }
-      to   { transform: translate(8%, 10%) scale(1.25); }
+    @keyframes twinkle {
+      0%, 100% { opacity: 0; transform: scale(.6); }
+      50% { opacity: .5; transform: scale(1); }
     }
-    
+
+    /* 暗角 */
+    #vignette {
+      position: fixed; inset: 0;
+      background: radial-gradient(ellipse at center, transparent 45%, rgba(0, 0, 0, .6) 100%);
+      pointer-events: none;
+    }
+
+    /* ===== 主体 ===== */
     #stage {
       position: relative;
       text-align: center;
-      padding: 0 24px;
-      max-width: 800px;
+      padding: 0 28px;
+      max-width: 760px;
       cursor: pointer;
       user-select: none;
+      z-index: 2;
     }
-    
-    #phrase {
-      font-size: clamp(28px, 6vw, 56px);
-      font-weight: 700;
-      line-height: 1.5;
-      letter-spacing: .04em;
-      color: #fff;
-      text-shadow: 0 0 24px var(--c), 0 0 64px var(--c);
-      animation: pop .55s cubic-bezier(.2, 1.4, .4, 1) both;
-    }
-    #phrase.pop { animation: pop .55s cubic-bezier(.2, 1.4, .4, 1) both; }
-    
-    @keyframes pop {
-      0%   { opacity: 0; transform: scale(.5) translateY(18px); }
-      100% { opacity: 1; transform: scale(1) translateY(0); }
-    }
-    
-    #hint {
-      margin-top: 28px;
-      font-size: 13px;
-      letter-spacing: .3em;
-      color: rgba(255, 255, 255, .35);
-      text-transform: uppercase;
-    }
-    
-    #ops {
-      margin-top: 36px;
+
+    /* 顶部装饰线 */
+    .ornament {
       display: flex;
-      gap: 28px;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 42px;
+    }
+    .ornament .line {
+      width: 56px; height: 1px;
+      background: linear-gradient(to right, transparent, var(--c));
+      opacity: .8;
+      transition: background 1.4s ease;
+    }
+    .ornament .line.r { background: linear-gradient(to left, transparent, var(--c)); }
+    .ornament .gem {
+      width: 7px; height: 7px;
+      background: var(--c);
+      transform: rotate(45deg);
+      box-shadow: 0 0 12px var(--c);
+      transition: background 1.4s ease, box-shadow 1.4s ease;
+    }
+
+    /* 语句 */
+    #phrase {
+      font-size: clamp(24px, 5.4vw, 44px);
+      font-weight: 600;
+      line-height: 1.9;
+      letter-spacing: .06em;
+      color: #fff;
+      text-shadow: 0 2px 30px rgba(0, 0, 0, .5);
+      min-height: 3.8em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #phrase span {
+      display: block;
+      animation: rise .7s cubic-bezier(.2, .8, .3, 1) both;
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(26px); filter: blur(6px); }
+      to   { opacity: 1; transform: translateY(0); filter: blur(0); }
+    }
+
+    /* 按钮 */
+    #ops {
+      margin-top: 30px;
+      display: flex;
+      gap: 22px;
       justify-content: center;
       align-items: center;
       flex-wrap: wrap;
     }
-    
     #ops span, #ops a {
-      font-size: 15px;
-      letter-spacing: .12em;
-      color: rgba(255, 255, 255, .65);
-      border: 1px solid rgba(255, 255, 255, .25);
+      font-size: 14px;
+      letter-spacing: .18em;
+      color: rgba(255, 255, 255, .7);
+      border: 1px solid rgba(255, 255, 255, .18);
       border-radius: 999px;
-      padding: 10px 26px;
+      padding: 11px 30px;
       cursor: pointer;
       text-decoration: none;
-      transition: all .25s;
-      background: rgba(255, 255, 255, .03);
+      background: rgba(255, 255, 255, .04);
+      backdrop-filter: blur(4px);
+      transition: all .3s ease;
     }
-    
     #ops span:hover, #ops a:hover {
       color: #fff;
       border-color: var(--c);
-      box-shadow: 0 0 18px var(--c);
-      background: rgba(255, 255, 255, .08);
+      box-shadow: 0 0 20px color-mix(in srgb, var(--c) 55%, transparent);
+      background: rgba(255, 255, 255, .09);
+      transform: translateY(-2px);
+    }
+
+    #hint {
+      position: fixed;
+      bottom: 26px;
+      left: 0; right: 0;
+      text-align: center;
+      font-size: 11px;
+      letter-spacing: .4em;
+      color: rgba(255, 255, 255, .22);
+      z-index: 2;
     }
   </style>
 </head>
 
 <body>
-  <div id="glow"></div>
+  <div class="glow" id="glow1"></div>
+  <div class="glow" id="glow2"></div>
+  <div class="glow" id="glow3"></div>
+  <div id="vignette"></div>
+
   <div id="stage">
-    <p id="phrase"></p>
-    <p id="hint">TAP FOR MORE</p>
+    <div class="ornament">
+      <div class="line"></div>
+      <div class="gem"></div>
+      <div class="line r"></div>
+    </div>
+    <p id="phrase"><span></span></p>
     <div id="ops">
-      <span id="bt_next">换一句 →</span>
       <a href="index.html" id="bt_again">＜ 再玩一次</a>
     </div>
   </div>
 
-<script>
+  <p id="hint">TAP ANYWHERE</p>
+
+  <script>
     var phrases = [
       "我可真是个天才！",
       "每一次敲击<br>都是独一无二的创作！",
@@ -129,7 +196,7 @@
       "祝你逃出苦难向春山<br>所有的潮湿和荆棘都是通往明天的铺垫",
       "明年有明年的雪<br>明年的雾色<br>明年的永无休止的阳光<br>还有明年数不尽的生机",
       "我希望你一切都好<br>希望所有俗套的祝福语都在你身上灵验",
-      "要永远年轻<br>永远热情<br>永远不听话；要大笑<br>要做梦<br>要与众不同<br>人生是一场伟大的冒险",
+      "要永远年轻&nbsp;&nbsp;永远热情<br>永远不听话&nbsp;&nbsp;要大笑<br>要做梦&nbsp;&nbsp;要与众不同<br>人生是一场伟大的冒险",
       "有的山长满荆棘<br>有的山全是野兽<br>所以你应该是自己那座山",
       "如果你正在经历一段格外艰难的人生<br>请允许我祝福你可以从今天开始<br>邂逅最棒的一年",
       "我与世界<br>都是帧帧瞬间",
@@ -137,14 +204,27 @@
       "生命如暗室<br>不妨我明写春诗",
       "我可是主角<br>这跌宕<br>是必然的",
       "我和我自己是真正的同生共死<br>同甘共苦<br>同舟共济",
-      "永远相信：有志者事竟成",
       "谁都不会永远把我束缚",
       "人类只是我的兼职",
       "自己的感受永远置顶",
+      "故事远比我们知道的要大得多",
+      "有些浪漫只属于勇者",
+      "没有月亮<br>就没有望远镜",
+      "Evolve<br>If you only tackle what you know<br>you'll never grow",
+      "坚信你的对手一样会感到疲惫",
+      "起初我们并不想改变世界<br>但发现世界正在被一帮二混子改变着<br>我们合计了一下<br>还是掺和掺和",
+      "不要被这个世界同化得不剩一点闪光",
+      "Shoot for the moon<br>Even if you miss<br>you'll land among the stars",
+      "未知并不应该带来神秘与恐惧<br>相反地<br>未知也许带来的是启智",
+      "这个世界并不太平<br>但不要因此就停滞不前",
+      "愿你能成为自己的太阳<br>无需凭借谁的光",
+      "财务自由时有时无",
+      "我的福气在后头<br>但不知道在谁的后头",
+      "我与我周旋久<br>宁作我",
       "没什么好焦虑的<br>活着就能翻盘",
       "你知道的<br>这山野烂漫为你而开",
-      "于高山之巅<br>方见大河奔涌；于群峰之上<br>便觉长风浩荡",
-      "我问小狗<br>不开心怎么办<br>小狗说：忘忘忘",
+      "于高山之巅&nbsp;&nbsp;方见大河奔涌<br>于群峰之上&nbsp;&nbsp;便觉长风浩荡",
+      "我问小狗<br>不开心怎么办<br>小狗说 忘忘忘",
       "每天都是好日子",
       "让我们都变成幸福大王",
       "决定好的事<br>就只管往前冲<br>着手眼前的事<br>剩下的都交给时间",
@@ -160,34 +240,77 @@
       "宇宙偷偷收藏了你的旋律！",
       "你的音乐存在过<br>就有意义！",
       "如果你赶不上凌晨五点的日出<br>不妨看看傍晚六点的夕阳<br>我的意思是<br>任何时候都不晚",
-      "奇迹都是敲出来的！"
+      "奇迹都是敲出来的！",
+      "君子爱财<br>取之<br>取之取之",
+      "把烦心事都丢掉<br>腾出地方装鲜花",
+      "主业干饭，副业摸鱼<br>偶尔正经，经常发疯",
+      "揣着一口袋开心<br>奔赴下一个晴天"
     ];
 
-    var colors = ["#ff6b9d", "#ffa94d", "#ffd43b", "#69db7c", "#4dabf7", "#b197fc", "#f783ac"];
-    var last = -1;
-    
-    function pick(arr, avoid) {
+    /* 双色主题（互相搭配的柔光组合） */
+    var palettes = [
+      { c: "#ff8fab", c1: "#b24a6f", c2: "#5a3d6b" },  /* 樱粉 */
+      { c: "#ffb86b", c1: "#a05a2c", c2: "#5d3a5c" },  /* 暖橘 */
+      { c: "#ffd97a", c1: "#9c7a2e", c2: "#4a5d52" },  /* 蜜金 */
+      { c: "#8fe388", c1: "#3e7a4d", c2: "#2f5a63" },  /* 青叶 */
+      { c: "#7fd4ff", c1: "#2d6a8f", c2: "#3d4a7d" },  /* 晴空 */
+      { c: "#c0a8ff", c1: "#6a4d9e", c2: "#42527d" },  /* 星紫 */
+      { c: "#ffa8c9", c1: "#a04a70", c2: "#4a5d8a" }   /* 晚霞 */
+    ];
+
+    var last = -1, lastP = -1;
+
+    function pickIndex(len, avoid) {
       var i;
-      do { i = Math.floor(Math.random() * arr.length); } while (arr.length > 1 && i === avoid);
+      do { i = Math.floor(Math.random() * len); } while (len > 1 && i === avoid);
       return i;
     }
-    
-    function show() {
-      last = pick(phrases, last);
-      var phraseEl = document.getElementById("phrase");
-      var c = colors[Math.floor(Math.random() * colors.length)];
-      document.documentElement.style.setProperty("--c", c);
-      phraseEl.classList.remove("pop");
-      void phraseEl.offsetWidth; /* 重置动画 */
-      phraseEl.innerHTML = phrases[last];
-      phraseEl.classList.add("pop");
+
+    function applyPalette() {
+      var pi = pickIndex(palettes.length, lastP);
+      lastP = pi;
+      var p = palettes[pi];
+      document.documentElement.style.setProperty("--c", p.c);
+      document.documentElement.style.setProperty("--c1", p.c1);
+      document.documentElement.style.setProperty("--c2", p.c2);
     }
-    
-    document.getElementById("stage").addEventListener("click", function (e) {
-      if (e.target.tagName === "A") return;
+
+    function show() {
+      last = pickIndex(phrases.length, last);
+      applyPalette();
+      var phraseEl = document.getElementById("phrase");
+      var span = phraseEl.querySelector("span");
+      span.style.animation = "none";
+      void span.offsetWidth;
+      span.innerHTML = phrases[last];
+      span.style.animation = "";
+    }
+
+    /* 星尘 */
+    (function () {
+      for (var i = 0; i < 26; i++) {
+        var s = document.createElement("div");
+        s.className = "star";
+        s.style.left = Math.random() * 100 + "vw";
+        s.style.top = Math.random() * 100 + "vh";
+        s.style.animationDelay = (Math.random() * 4) + "s";
+        s.style.animationDuration = (3 + Math.random() * 3) + "s";
+        var size = 1 + Math.random() * 2.5;
+        s.style.width = size + "px";
+        s.style.height = size + "px";
+        document.body.appendChild(s);
+      }
+    })();
+
+    document.addEventListener("click", function (e) {
+      if (e.target.closest("a")) return;
       show();
     });
-    document.getElementById("bt_next").addEventListener("click", show);
+    document.addEventListener("touchend", function (e) {
+      if (e.target.closest("a")) return;
+      e.preventDefault();
+      show();
+    }, { passive: false });
     show();
   </script>
 </body>
