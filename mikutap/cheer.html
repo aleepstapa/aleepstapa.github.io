@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+  <title>给你点个赞</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body { height: 100%; overflow: hidden; }
+    
+    body {
+      background: #000;
+      font-family: Quicksand, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    /* 柔和流动的背景光 */
+    #glow {
+      position: fixed;
+      width: 120vmax; height: 120vmax;
+      left: -60vmax; top: -60vmax;
+      background: radial-gradient(circle, var(--c) 0%, transparent 55%);
+      opacity: .22;
+      animation: drift 14s ease-in-out infinite alternate;
+      pointer-events: none;
+    }
+    @keyframes drift {
+      from { transform: translate(-8%, -8%) scale(1); }
+      to   { transform: translate(8%, 10%) scale(1.25); }
+    }
+    
+    #stage {
+      position: relative;
+      text-align: center;
+      padding: 0 24px;
+      max-width: 800px;
+      cursor: pointer;
+      user-select: none;
+    }
+    
+    #phrase {
+      font-size: clamp(28px, 6vw, 56px);
+      font-weight: 700;
+      line-height: 1.5;
+      letter-spacing: .04em;
+      color: #fff;
+      text-shadow: 0 0 24px var(--c), 0 0 64px var(--c);
+      animation: pop .55s cubic-bezier(.2, 1.4, .4, 1) both;
+    }
+    #phrase.pop { animation: pop .55s cubic-bezier(.2, 1.4, .4, 1) both; }
+    
+    @keyframes pop {
+      0%   { opacity: 0; transform: scale(.5) translateY(18px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    
+    #hint {
+      margin-top: 28px;
+      font-size: 13px;
+      letter-spacing: .3em;
+      color: rgba(255, 255, 255, .35);
+      text-transform: uppercase;
+    }
+    
+    #ops {
+      margin-top: 36px;
+      display: flex;
+      gap: 28px;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    
+    #ops span, #ops a {
+      font-size: 15px;
+      letter-spacing: .12em;
+      color: rgba(255, 255, 255, .65);
+      border: 1px solid rgba(255, 255, 255, .25);
+      border-radius: 999px;
+      padding: 10px 26px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all .25s;
+      background: rgba(255, 255, 255, .03);
+    }
+    
+    #ops span:hover, #ops a:hover {
+      color: #fff;
+      border-color: var(--c);
+      box-shadow: 0 0 18px var(--c);
+      background: rgba(255, 255, 255, .08);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="glow"></div>
+  <div id="stage">
+    <p id="phrase"></p>
+    <p id="hint">TAP FOR MORE</p>
+    <div id="ops">
+      <span id="bt_next">换一句 →</span>
+      <a href="index.html" id="bt_again">＜ 再玩一次</a>
+    </div>
+  </div>
+
+<script>
+    var phrases = [
+      "我可真是个天才！",
+      "每一次敲击<br>都是独一无二的创作！",
+      "你的手指会发光！",
+      "世界都跟着律动了！",
+      "你已经比昨天的自己更厉害了！",
+      "人生是旷野<br>不是轨道<br>不必强迫自己走所有人都走的路",
+      "允许情绪来<br>也允许情绪离开<br>你只是天空<br>情绪只是路过的云",
+      "不要批判以前的自己<br>他当时站在雾里<br>也很迷茫",
+      "真正的进步<br>不是焦虑的自我怀疑<br>而是平静的自我接纳",
+      "很多烦恼<br>都是大脑对未发生事情的过度想象",
+      "把注意力收回自己身上<br>别人的评价只是别人的课题",
+      "睡一觉<br>很多沉重的事情<br>会自动变得轻一些",
+      "你不需要事事满分<br>尽力<br>就已经足够",
+      "不必为不确定的未来<br>消耗掉实实在在的当下",
+      "祝你逃出苦难向春山<br>所有的潮湿和荆棘都是通往明天的铺垫",
+      "明年有明年的雪<br>明年的雾色<br>明年的永无休止的阳光<br>还有明年数不尽的生机",
+      "我希望你一切都好<br>希望所有俗套的祝福语都在你身上灵验",
+      "要永远年轻<br>永远热情<br>永远不听话；要大笑<br>要做梦<br>要与众不同<br>人生是一场伟大的冒险",
+      "有的山长满荆棘<br>有的山全是野兽<br>所以你应该是自己那座山",
+      "如果你正在经历一段格外艰难的人生<br>请允许我祝福你可以从今天开始<br>邂逅最棒的一年",
+      "我与世界<br>都是帧帧瞬间",
+      "大树会拥抱每个抬头的人",
+      "生命如暗室<br>不妨我明写春诗",
+      "我可是主角<br>这跌宕<br>是必然的",
+      "我和我自己是真正的同生共死<br>同甘共苦<br>同舟共济",
+      "永远相信：有志者事竟成",
+      "谁都不会永远把我束缚",
+      "人类只是我的兼职",
+      "自己的感受永远置顶",
+      "没什么好焦虑的<br>活着就能翻盘",
+      "你知道的<br>这山野烂漫为你而开",
+      "于高山之巅<br>方见大河奔涌；于群峰之上<br>便觉长风浩荡",
+      "我问小狗<br>不开心怎么办<br>小狗说：忘忘忘",
+      "每天都是好日子",
+      "让我们都变成幸福大王",
+      "决定好的事<br>就只管往前冲<br>着手眼前的事<br>剩下的都交给时间",
+      "不要再咀嚼小小的悲伤<br>而忘掉整个世界",
+      "希望你一切都好<br>希望所有俗套的祝福语都在你身上灵验",
+      "没关系的<br>实在不行<br>我陪你去路边叹叹气",
+      "星星应该哈哈大笑<br>反正宇宙是个偏僻地方",
+      "阳光好的时候<br>发呆也算正经事",
+      "一切都很好<br>我听到自己向上的声音",
+      "如果上帝关上门<br>那你就再打开<br>门是这么用的",
+      "把爱放在阳光下<br>人才能明媚",
+      "灵感正在来的路上<br>别停下！",
+      "宇宙偷偷收藏了你的旋律！",
+      "你的音乐存在过<br>就有意义！",
+      "如果你赶不上凌晨五点的日出<br>不妨看看傍晚六点的夕阳<br>我的意思是<br>任何时候都不晚",
+      "奇迹都是敲出来的！"
+    ];
+
+    var colors = ["#ff6b9d", "#ffa94d", "#ffd43b", "#69db7c", "#4dabf7", "#b197fc", "#f783ac"];
+    var last = -1;
+    
+    function pick(arr, avoid) {
+      var i;
+      do { i = Math.floor(Math.random() * arr.length); } while (arr.length > 1 && i === avoid);
+      return i;
+    }
+    
+    function show() {
+      last = pick(phrases, last);
+      var phraseEl = document.getElementById("phrase");
+      var c = colors[Math.floor(Math.random() * colors.length)];
+      document.documentElement.style.setProperty("--c", c);
+      phraseEl.classList.remove("pop");
+      void phraseEl.offsetWidth; /* 重置动画 */
+      phraseEl.innerHTML = phrases[last];
+      phraseEl.classList.add("pop");
+    }
+    
+    document.getElementById("stage").addEventListener("click", function (e) {
+      if (e.target.tagName === "A") return;
+      show();
+    });
+    document.getElementById("bt_next").addEventListener("click", show);
+    show();
+  </script>
+</body>
+
+</html>
